@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
-// import Providers from "next-auth/providers"
 import CredentialsProvider from "next-auth/providers/credentials";
-import { connectToDatabase } from "../../../lib/db";
+import { connectToSqlDatabase } from "../../../lib/sqldb";
 import { verifyPassword } from "../../../lib/auth";
 
 export default NextAuth({
@@ -11,32 +10,27 @@ export default NextAuth({
   providers: [
     CredentialsProvider({
       async authorize(credentials) {
-        const client = await connectToDatabase();
-
-        const usersCollection = client.db().collection("users");
-
-        const user = await usersCollection.findOne({
-          email: credentials.email,
-        });
-
-        if (!user) {
-          client.close();
+        const mysql = await connectToSqlDatabase();
+        const user = await mysql.query("SELECT * FROM users WHERE email = ?", [
+          credentials.email,
+        ]);
+        const userPassword = await user[0].password;
+        const userEmail = await user[0].email;
+        if (user.length === 0) {
+          await mysql.end();
           throw new Error("No user found");
         }
-
         const isValid = await verifyPassword(
           credentials.password,
-          user.password
+          userPassword
         );
 
         if (!isValid) {
-          client.close();
+          await mysql.end();
           throw new Error("Could not log in user");
         }
-
-        return { email: user.email };
-
-        await client.close();
+        return { email: userEmail };
+        await mysql.end();
       },
     }),
   ],

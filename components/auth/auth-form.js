@@ -24,6 +24,7 @@ async function createUser(email, password) {
 function AuthForm() {
   const emailInputRef = useRef();
   const passwordInputRef = useRef();
+  const [errorMessage, setErrorMesage] = useState();
 
   const [isLogin, setIsLogin] = useState(true);
   const router = useRouter();
@@ -49,6 +50,9 @@ function AuthForm() {
       // *** if sign-in was sucessful
       if (!result.error) {
         router.replace("/profile");
+      } else {
+        console.log("not successful", result);
+        setErrorMesage(true);
       }
     } else {
       try {
@@ -86,6 +90,11 @@ function AuthForm() {
           >
             {isLogin ? "Create new account" : "Login with existing account"}
           </button>
+        </div>
+        <div>
+          <p className={classes.error}>
+            {errorMessage ? "Incorrect username or password" : ""}
+          </p>
         </div>
       </form>
     </section>
