@@ -1,13 +1,10 @@
 import { connectToDatabase } from "../../../lib/db";
 import { hashPassword } from "../../../lib/auth";
 
-import { connectToSqlDatabase } from "../../../lib/sqldb";
-
 async function handler(req, res) {
   if (req.method !== "POST") {
     return;
   }
-
   const data = req.body;
 
   const { email, password } = data;
@@ -25,23 +22,16 @@ async function handler(req, res) {
     return;
   }
 
-  // const client = await connectToDatabase();
-  //
-  // const db = client.db();
+  const client = await connectToDatabase();
 
-  const mysql = await connectToSqlDatabase();
+  const db = client.db();
 
-  const existingUser = await mysql.query(
-    "SELECT * FROM users WHERE email = ?",
-    [email]
-  );
-  console.log(existingUser);
-  // const existingUser = await db.collection("users").findOne({ email: email });
+  const existingUser = await db.collection("users").findOne({ email: email });
+  console.log("the existing user is: ", existingUser);
 
-  if (existingUser.length > 0) {
-    res.status(422).json({ message: "A user with this email already exists!" });
-    // await client.close();
-    await mysql.end();
+  if (existingUser) {
+    res.status(422).json({ message: "A user with this email already exists." });
+    await client.close();
     return;
   }
 
