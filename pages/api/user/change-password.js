@@ -1,7 +1,6 @@
 import { getSession } from "next-auth/react";
 import { connectToDatabase } from "../../../lib/db";
 import { hashPassword, verifyPassword } from "../../../lib/auth";
-import { connectToSqlDatabase } from "../../../lib/sqldb";
 
 export default async function handler(req, res) {
   if (req.method !== "PATCH") {
@@ -19,14 +18,14 @@ export default async function handler(req, res) {
   const oldPassword = req.body.oldPassword;
   const newPassword = req.body.newPassword;
 
-  const mysql = await connectToSqlDatabase();
-  const user = await mysql.query("SELECT * FROM users WHERE email = ?", [
-    userEmail,
-  ]);
+  const client = await connectToDatabase();
+  const db = client.db();
+  const user = await db
+    .collection("users")
+    .findOne({ email: session.user.email });
 
-  if (user.length === 0) {
+  if (!user) {
     res.status(404).json({ message: "User not found" });
-    await mysql.end();
     return;
   }
 
@@ -36,17 +35,15 @@ export default async function handler(req, res) {
 
   if (!passwordsAreEqual) {
     res.status(403).json({ message: "Invalid password" });
-    await mysql.end;
     return;
   }
 
   const hashedPassword = await hashPassword(newPassword);
 
-  const result = await mysql.query(
-    "UPDATE users SET password = ? WHERE email = ?",
-    [hashedPassword, userEmail]
-  );
+  const result = await db.collection("users").insertOne({
+    email: session.user.email,
+    password: hashedPassword,
+  });
 
-  await mysql.end();
   res.status(200).json({ message: "Password updated" });
 }

@@ -24,26 +24,22 @@ async function handler(req, res) {
 
     return;
   }
+  const client = await connectToDatabase();
+  const db = client.db();
 
-  const mysql = await connectToSqlDatabase();
+  const existingUser = await db.collection("users").findOne({ email: email });
 
-  const existingUser = await mysql.query(
-    "SELECT * FROM users WHERE email = ?",
-    [email]
-  );
-
-  if (existingUser.length > 0) {
-    res.status(422).json({ message: "A user with this email already exists!" });
-    // await client.close();
-    await mysql.end();
+  if (existingUser) {
+    res.status(422).json({ message: "A user with this email already exists." });
+    await client.close();
     return;
   }
 
   const hashedPassword = await hashPassword(password);
-  const result = await mysql.query(
-    "INSERT INTO users (email, password) VALUES (?, ?)",
-    [email, hashedPassword]
-  );
+  const result = await db.collection("users").insertOne({
+    email: email,
+    password: hashedPassword,
+  });
 
   res.status(201).json({ message: "Created user" });
 }
